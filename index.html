@@ -1,0 +1,997 @@
+<html><head><base href="https://www.dropbox.com/scl/fi/7la2pe1kv57u2b5fe3rip/jump.jpg?rlkey=v3wsebpqz0q6ltw56hzn2ze4q&st=70vd0s42&dl=1%20coloque%20essa%20imagem%20para%20ser%20o%20jumpscare">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Horror</title>
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+  }
+  #gameContainer {
+    width: 100%;
+    height: 100%;
+    display: none;
+  }
+  #ui {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: #fff;
+    font-size: 18px;
+    text-shadow: 2px 2px 2px #000;
+  }
+  #flashlightEffect {
+    display: none;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 50% 50%, transparent 0%, rgba(0,0,0,0.95) 10%, rgba(0,0,0,0.98) 20%);
+    pointer-events: none;
+    z-index: 1000;
+  }
+  #gameOver {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0,0,0,0.8);
+    color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+  }
+  #restartButton {
+    margin-top: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  #inhaler {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background-color: #4CAF50;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: 24px;
+    color: white;
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+  }
+  #staminaBar {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    width: 200px;
+    height: 20px;
+    background-color: #333;
+    border: 2px solid #fff;
+  }
+  #staminaFill {
+    width: 100%;
+    height: 100%;
+    background-color: #4CAF50;
+    transition: width 0.3s;
+  }
+  #jumpscareOverlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('https://www.dropbox.com/scl/fi/7la2pe1kv57u2b5fe3rip/jump.jpg?rlkey=v3wsebpqz0q6ltw56hzn2ze4q&st=70vd0s42&dl=1') no-repeat center center;
+    background-size: cover;
+    z-index: 1000;
+  }
+  @keyframes flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  #jumpscareOverlay.flashing {
+    animation: flash 0.2s linear infinite;
+  }
+  #mainMenu, #settingsMenu {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    z-index: 1001;
+  }
+  #mainMenu h1, #settingsMenu h2 {
+    margin-bottom: 20px;
+  }
+  #mainMenu button, #settingsMenu button, #settingsMenu select {
+    margin: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  #missionUI {
+    position: absolute;
+    top: 50px;
+    left: 10px;
+    color: #fff;
+    font-size: 18px;
+    text-shadow: 2px 2px 2px #000;
+  }
+  #gameComplete {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0,0,0,0.8);
+    color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+</head>
+<body>
+<div id="mainMenu">
+  <h1>The Horror By Freitas</h1>
+  <button id="playButton">Jogar</button>
+  <button id="settingsButton">Configurações</button>
+</div>
+
+<div id="settingsMenu" style="display: none;">
+  <h2>Configurações</h2>
+  <div>
+    <label for="graphicsQuality">Qualidade Gráfica:</label>
+    <select id="graphicsQuality">
+      <option value="low">Baixa</option>
+      <option value="medium" selected>Média</option>
+      <option value="high">Alta</option>
+    </select>
+  </div>
+  <button id="backButton">Voltar</button>
+</div>
+
+<div id="gameContainer"></div>
+<div id="ui">
+  Sanidade: <span id="sanity">100</span>%
+  <br>
+  Usos do Inalador: <span id="inhalerUses">3</span>
+</div>
+<div id="flashlightEffect"></div>
+<div id="gameOver">
+  <h2>Fim de Jogo</h2>
+  <p>Sua sanidade chegou a zero!</p>
+  <button id="restartButton">Recomeçar</button>
+</div>
+<div id="jumpscareOverlay"></div>
+<div id="inhaler" title="Usar Inalador">💨</div>
+<div id="staminaBar"><div id="staminaFill"></div></div>
+<div id="missionUI">
+  <div>Missão: Encontre a chave e abra o baú</div>
+  <div id="keyStatus">Chave: Não encontrada</div>
+</div>
+<div id="gameComplete">
+  <h2>Parabéns!</h2>
+  <p>Você completou a missão e escapou da floresta sombria!</p>
+  <button id="restartButton">Jogar Novamente</button>
+</div>
+
+<script>
+let scene, camera, renderer, player, sanity = 100;
+let ambientSound, heartbeatSound, inhalerSound, jumpscareSound;
+let inhalerUses = 2;
+let sanityDecreaseRate = 0.01;
+let isSanityDecreasing = true;
+let stamina = 100;
+let isRunning = false;
+let moveForward = false;
+let moveBackward = false;
+let moveLeft = false;
+let moveRight = false;
+let velocity = new THREE.Vector3();
+let direction = new THREE.Vector3();
+let rotation = new THREE.Euler(0, 0, 0, 'YXZ');
+let pitchObject = new THREE.Object3D();
+let yawObject = new THREE.Object3D();
+let isFlashlightOn = false;
+let lastMouseX = window.innerWidth / 2;
+let lastMouseY = window.innerHeight / 2;
+let graphicsQuality = 'medium';
+let hasKey = false;
+let missionCompleted = false;
+let keyObject, chestObject, inhalerObject;
+let bobAnimation = { y: 0, speed: 10, intensity: 0.05 };
+let fov = 75;
+let leftHand, rightHand;
+
+function createHands() {
+  const handGeometry = new THREE.BoxGeometry(0.2, 0.3, 0.1);
+  const handMaterial = new THREE.MeshPhongMaterial({ color: 0xffdbac });
+
+  leftHand = new THREE.Mesh(handGeometry, handMaterial);
+  rightHand = new THREE.Mesh(handGeometry, handMaterial);
+
+  leftHand.position.set(-0.4, -0.6, -0.7);
+  rightHand.position.set(0.4, -0.6, -0.7);
+
+  camera.add(leftHand);
+  camera.add(rightHand);
+}
+
+function animateHands(delta) {
+  const time = Date.now() * 0.001;
+  const isMoving = moveForward || moveBackward || moveLeft || moveRight;
+
+  if (isMoving) {
+    const amplitude = isRunning ? 0.1 : 0.05;
+    const frequency = isRunning ? 12 : 8;
+
+    leftHand.position.y = -0.6 + Math.sin(time * frequency) * amplitude;
+    rightHand.position.y = -0.6 + Math.sin(time * frequency + Math.PI) * amplitude;
+  } else {
+    leftHand.position.y = -0.6 + Math.sin(time * 2) * 0.01;
+    rightHand.position.y = -0.6 + Math.sin(time * 2 + Math.PI) * 0.01;
+  }
+}
+
+function createBrokenCar() {
+  const car = new THREE.Group();
+
+  const bodyGeometry = new THREE.BoxGeometry(3, 1.5, 5);
+  const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x555555 });
+  const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+  body.position.y = 0.75;
+  car.add(body);
+
+  const wheelGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16);
+  const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x222222 });
+  const wheelPositions = [
+    [-1.5, 0.5, -1.5],
+    [1.5, 0.5, -1.5],
+    [-1.5, 0.5, 1.5],
+    [1.5, 0.5, 1.5]
+  ];
+  wheelPositions.forEach(position => {
+    const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+    wheel.position.set(...position);
+    wheel.rotation.z = Math.PI / 2;
+    car.add(wheel);
+  });
+
+  const debrisGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+  const debrisMaterial = new THREE.MeshPhongMaterial({ color: 0x777777 });
+  for (let i = 0; i < 5; i++) {
+    const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
+    debris.position.set(
+      Math.random() * 4 - 2,
+      Math.random() * 0.5,
+      Math.random() * 6 - 3
+    );
+    debris.rotation.set(
+      Math.random() * Math.PI,
+      Math.random() * Math.PI,
+      Math.random() * Math.PI
+    );
+    car.add(debris);
+  }
+
+  car.userData.collidable = true;
+  return car;
+}
+
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+  scene.fog = new THREE.Fog(0x000000, 1, 6.5);
+  
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 6.5);
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.getElementById('gameContainer').appendChild(renderer.domElement);
+
+  const ambientLight = new THREE.AmbientLight(0x202020);
+  scene.add(ambientLight);
+
+  createCave();
+  
+  const brokenCar = createBrokenCar();
+  brokenCar.position.set(-5, 0, -5);
+  scene.add(brokenCar);
+  
+  createPlayer();
+  createKeyAndChest();
+  setupSounds();
+
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
+  window.addEventListener('resize', onWindowResize);
+  document.getElementById('inhaler').addEventListener('click', useInhaler);
+
+  updateGraphicsQuality();
+
+  animate();
+}
+
+function createPlayer() {
+  yawObject.position.set(-3, 2, -5);
+  pitchObject.add(camera);
+  yawObject.add(pitchObject);
+  
+  const flashlight = new THREE.SpotLight(0xffffff, 1, 6.5, Math.PI / 4, 0.5, 1);
+  flashlight.position.set(0, 0, 0);
+  flashlight.target.position.set(0, 0, -1);
+  camera.add(flashlight);
+  camera.add(flashlight.target);
+
+  createHands(); 
+
+  scene.add(yawObject);
+}
+
+function createTree() {
+  const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.4, 5, 8);
+  const trunkMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+  const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+
+  const leavesGeometry = new THREE.ConeGeometry(2, 4, 8);
+  const leavesMaterial = new THREE.MeshPhongMaterial({ color: 0x228B22 });
+  const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+  leaves.position.y = 4.5;
+
+  const tree = new THREE.Group();
+  tree.add(trunk);
+  tree.add(leaves);
+  tree.userData.collidable = true;
+  return tree;
+}
+
+function createDryTree() {
+  const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 5, 8);
+  const trunkMaterial = new THREE.MeshPhongMaterial({ color: 0x4b3621 });
+  const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+
+  const branchGeometry = new THREE.CylinderGeometry(0.05, 0.1, 2, 5);
+  const branchMaterial = new THREE.MeshPhongMaterial({ color: 0x4b3621 });
+  
+  const tree = new THREE.Group();
+  tree.add(trunk);
+  tree.userData.collidable = true;
+
+  for (let i = 0; i < 5; i++) {
+    const branch = new THREE.Mesh(branchGeometry, branchMaterial);
+    branch.position.y = Math.random() * 2 + 1;
+    branch.rotation.x = Math.random() * Math.PI / 2;
+    branch.rotation.z = Math.random() * Math.PI * 2;
+    tree.add(branch);
+  }
+
+  return tree;
+}
+
+function createRoad() {
+  const roadGeometry = new THREE.PlaneGeometry(5, 100);
+  const roadMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+  const road = new THREE.Mesh(roadGeometry, roadMaterial);
+  road.rotation.x = -Math.PI / 2;
+  return road;
+}
+
+function createPumpkinMoon() {
+  const moonGeometry = new THREE.SphereGeometry(10, 32, 32);
+  const moonMaterial = new THREE.MeshPhongMaterial({ color: 0xffffcc });
+  const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+
+  const faceGeometry = new THREE.SphereGeometry(10.1, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+  const faceMaterial = new THREE.MeshBasicMaterial({ color: 0xff6600, side: THREE.BackSide });
+  const face = new THREE.Mesh(faceGeometry, faceMaterial);
+
+  const eyeGeometry = new THREE.SphereGeometry(1, 16, 16);
+  const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+  const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+  const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+  leftEye.position.set(-3, 3, 9);
+  rightEye.position.set(3, 3, 9);
+
+  const mouthGeometry = new THREE.TorusGeometry(3, 1, 16, 32, Math.PI);
+  const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+  const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
+  mouth.position.set(0, -2, 9);
+  mouth.rotation.x = Math.PI;
+
+  const pumpkinMoon = new THREE.Group();
+  pumpkinMoon.add(moon, face, leftEye, rightEye, mouth);
+  pumpkinMoon.position.set(0, 100, -150);
+  
+  return pumpkinMoon;
+}
+
+function createCave() {
+  const caveGeometry = new THREE.BoxGeometry(300, 60, 300);
+  const caveMaterial = new THREE.MeshPhongMaterial({
+    color: 0x4a4a4a,
+    side: THREE.BackSide,
+    roughness: 0.8,
+    metalness: 0.2
+  });
+  const cave = new THREE.Mesh(caveGeometry, caveMaterial);
+  cave.position.set(0, 30, 0);
+  scene.add(cave);
+
+  const stoneGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+  const stoneMaterial = new THREE.MeshPhongMaterial({color: 0x7a7a7a});
+
+  for (let i = 0; i < 500; i++) {
+    const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
+    stone.position.set(
+      Math.random() * 280 - 140,
+      0.25,
+      Math.random() * 280 - 140
+    );
+    stone.scale.set(
+      Math.random() * 0.5 + 0.5,
+      Math.random() * 0.3 + 0.2,
+      Math.random() * 0.5 + 0.5
+    );
+    stone.rotation.set(
+      Math.random() * Math.PI,
+      Math.random() * Math.PI,
+      Math.random() * Math.PI
+    );
+    stone.userData.collidable = true;
+    scene.add(stone);
+  }
+
+  for (let i = 0; i < 60; i++) {
+    const dryTree = createDryTree();
+    dryTree.position.set(
+      Math.random() * 280 - 140,
+      0,
+      Math.random() * 280 - 140
+    );
+    dryTree.scale.set(
+      Math.random() * 0.5 + 0.5,
+      Math.random() * 0.5 + 0.5,
+      Math.random() * 0.5 + 0.5
+    );
+    scene.add(dryTree);
+  }
+
+  const pumpkinMoon = createPumpkinMoon();
+  scene.add(pumpkinMoon);
+
+  const moonLight = new THREE.PointLight(0xff9933, 0.1, 5);
+  moonLight.position.set(0, 100, -150);
+  scene.add(moonLight);
+
+  for (let i = 0; i < 50; i++) {
+    const tree = createTree();
+    tree.position.set(
+      Math.random() * 280 - 140,
+      0,
+      Math.random() * 280 - 140
+    );
+    tree.scale.set(
+      Math.random() * 0.5 + 0.5,
+      Math.random() * 0.5 + 0.5,
+      Math.random() * 0.5 + 0.5
+    );
+    scene.add(tree);
+  }
+
+  const road1 = createRoad();
+  road1.position.set(0, 0.1, 0);
+  scene.add(road1);
+
+  const road2 = createRoad();
+  road2.position.set(0, 0.1, 0);
+  road2.rotation.y = Math.PI / 2;
+  scene.add(road2);
+}
+
+function checkCollision(newPosition) {
+  const playerBBox = new THREE.Box3().setFromCenterAndSize(
+    newPosition,
+    new THREE.Vector3(0.5, 3.2, 0.5)
+  );
+
+  if (
+    Math.abs(newPosition.x) > 148 ||
+    Math.abs(newPosition.z) > 148 ||
+    newPosition.y < 0 ||
+    newPosition.y > 58
+  ) {
+    return true;
+  }
+
+  for (let i = 0; i < scene.children.length; i++) {
+    const child = scene.children[i];
+    if (child instanceof THREE.Group || child instanceof THREE.Mesh) {
+      if (child.userData.collidable) {
+        const objectBBox = new THREE.Box3().setFromObject(child);
+        if (playerBBox.intersectsBox(objectBBox)) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+function showMainMenu() {
+  document.getElementById('mainMenu').style.display = 'block';
+  document.getElementById('settingsMenu').style.display = 'none';
+  document.getElementById('gameContainer').style.display = 'none';
+  document.getElementById('sanity').textContent = '100';
+}
+
+function showSettingsMenu() {
+  document.getElementById('mainMenu').style.display = 'none';
+  document.getElementById('settingsMenu').style.display = 'block';
+}
+
+function startGame() {
+  document.getElementById('mainMenu').style.display = 'none';
+  document.getElementById('gameContainer').style.display = 'block';
+  init();
+}
+
+function updateGraphicsQuality() {
+  graphicsQuality = document.getElementById('graphicsQuality').value;
+  switch(graphicsQuality) {
+    case 'low':
+      renderer.setPixelRatio(0.5);
+      break;
+    case 'medium':
+      renderer.setPixelRatio(1);
+      break;
+    case 'high':
+      renderer.setPixelRatio(window.devicePixelRatio);
+      break;
+  }
+}
+
+document.getElementById('playButton').addEventListener('click', startGame);
+document.getElementById('settingsButton').addEventListener('click', showSettingsMenu);
+document.getElementById('backButton').addEventListener('click', showMainMenu);
+document.getElementById('graphicsQuality').addEventListener('change', updateGraphicsQuality);
+
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+  scene.fog = new THREE.Fog(0x000000, 1, 6.5);
+  
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 6.5);
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.getElementById('gameContainer').appendChild(renderer.domElement);
+
+  const ambientLight = new THREE.AmbientLight(0x202020);
+  scene.add(ambientLight);
+
+  createCave();
+  
+  const brokenCar = createBrokenCar();
+  brokenCar.position.set(-5, 0, -5);
+  scene.add(brokenCar);
+  
+  createPlayer();
+  createKeyAndChest();
+  setupSounds();
+
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
+  window.addEventListener('resize', onWindowResize);
+  document.getElementById('inhaler').addEventListener('click', useInhaler);
+
+  updateGraphicsQuality();
+
+  animate();
+}
+
+function createPlayer() {
+  yawObject.position.set(-3, 2, -5);
+  pitchObject.add(camera);
+  yawObject.add(pitchObject);
+  
+  const flashlight = new THREE.SpotLight(0xffffff, 1, 6.5, Math.PI / 4, 0.5, 1);
+  flashlight.position.set(0, 0, 0);
+  flashlight.target.position.set(0, 0, -1);
+  camera.add(flashlight);
+  camera.add(flashlight.target);
+
+  createHands(); 
+
+  scene.add(yawObject);
+}
+
+function createKeyAndChest() {
+  const keyShape = new THREE.Shape();
+  keyShape.moveTo(0, 0);
+  keyShape.lineTo(0, 0.5);
+  keyShape.lineTo(0.2, 0.5);
+  keyShape.lineTo(0.2, 0.3);
+  keyShape.lineTo(0.4, 0.3);
+  keyShape.lineTo(0.4, 0.5);
+  keyShape.lineTo(0.6, 0.5);
+  keyShape.lineTo(0.6, 0);
+  keyShape.lineTo(0, 0);
+
+  const extrudeSettings = {
+    steps: 2,
+    depth: 0.1,
+    bevelEnabled: false
+  };
+
+  const keyMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0xFFD700, 
+    metalness: 0.8, 
+    roughness: 0.2 
+  });
+  const keyGeometry = new THREE.ExtrudeGeometry(keyShape, extrudeSettings);
+  keyObject = new THREE.Mesh(keyGeometry, keyMaterial);
+  keyObject.rotation.x = -Math.PI / 2; 
+  keyObject.scale.set(0.5, 0.5, 0.5);
+  keyObject.position.set(Math.random() * 280 - 140, 0.5, Math.random() * 280 - 140); 
+  const keyLight = new THREE.PointLight(0xFFFFFF, 0.5, 2);
+  keyLight.position.set(0, 0.5, 0);
+  keyObject.add(keyLight);
+  scene.add(keyObject);
+
+  const chestGeometry = new THREE.BoxGeometry(1, 0.5, 0.5);
+  const chestMaterial = new THREE.MeshStandardMaterial({
+    color: 0xDAA520,
+    metalness: 0.7,
+    roughness: 0.3
+  });
+  chestObject = new THREE.Mesh(chestGeometry, chestMaterial);
+  chestObject.position.set(Math.random() * 280 - 140, 0.25, Math.random() * 280 - 140); 
+  const chestLight = new THREE.PointLight(0xFFFFFF, 0.5, 2);
+  chestLight.position.set(0, 0.5, 0);
+  chestObject.add(chestLight);
+  scene.add(chestObject);
+
+  const inhalerGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.3, 32);
+  const inhalerMaterial = new THREE.MeshStandardMaterial({ color: 0x4CAF50, metalness: 0.5, roughness: 0.5 });
+  inhalerObject = new THREE.Mesh(inhalerGeometry, inhalerMaterial);
+  inhalerObject.position.copy(chestObject.position);
+  inhalerObject.position.y += 0.5;
+  inhalerObject.visible = false; 
+  scene.add(inhalerObject);
+}
+
+function checkKeyCollection() {
+  if (!hasKey && yawObject.position.distanceTo(keyObject.position) < 3) {
+    hasKey = true;
+    scene.remove(keyObject);
+    document.getElementById('keyStatus').textContent = 'Chave: Encontrada';
+    console.log('Key collected!'); 
+  }
+}
+
+function checkChestOpen() {
+  if (hasKey && !missionCompleted && yawObject.position.distanceTo(chestObject.position) < 2) {
+    chestObject.rotation.x = Math.PI / 4; 
+    inhalerObject.visible = true; 
+    document.getElementById('missionUI').innerHTML = '<div>Missão: Colete o inalador do baú</div>';
+    setTimeout(checkInhalerCollection, 100);
+  }
+}
+
+function checkInhalerCollection() {
+  if (yawObject.position.distanceTo(inhalerObject.position) < 1.5) {
+    missionCompleted = true;
+    gameComplete();
+  } else {
+    setTimeout(checkInhalerCollection, 100);
+  }
+}
+
+function gameComplete() {
+  document.getElementById('gameComplete').style.display = 'block';
+  ambientSound.stop();
+  heartbeatSound.stop();
+  inhalerUses += 2;
+  document.getElementById('inhalerUses').textContent = inhalerUses;
+}
+
+function returnToMainMenu() {
+  window.location.href = 'index.html';
+}
+
+document.getElementById('gameComplete').querySelector('#restartButton').addEventListener('click', returnToMainMenu);
+
+function setupSounds() {
+  ambientSound = new Howl({
+    src: ['https://example.com/ambient.mp3'],
+    loop: true,
+    volume: 0.5
+  });
+
+  heartbeatSound = new Howl({
+    src: ['https://example.com/heartbeat.mp3'],
+    loop: true,
+    volume: 0
+  });
+
+  inhalerSound = new Howl({
+    src: ['https://example.com/inhaler.mp3'],
+    loop: false,
+    volume: 0.5
+  });
+
+  jumpscareSound = new Howl({
+    src: ['https://www.dropbox.com/scl/fi/ixik7tg6ubiqq9vqm4xbs/Somgrito.mp3?rlkey=6s3lbg78s81fptm671rodak5j&dl=1'],
+    loop: false,
+    volume: 1
+  });
+
+  ambientSound.play();
+  heartbeatSound.play();
+}
+
+function onMouseMove(event) {
+  const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+  const movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+
+  yawObject.rotation.y -= movementX * 0.002;
+  pitchObject.rotation.x -= movementY * 0.002;
+  pitchObject.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitchObject.rotation.x));
+
+  lastMouseX += movementX;
+  lastMouseY += movementY;
+  lastMouseX = Math.max(0, Math.min(window.innerWidth, lastMouseX));
+  lastMouseY = Math.max(0, Math.min(window.innerHeight, lastMouseY));
+
+  if (isFlashlightOn) {
+    updateFlashlightPosition(lastMouseX, lastMouseY);
+  }
+}
+
+function toggleFlashlight() {
+  isFlashlightOn = !isFlashlightOn;
+  const flashlight = camera.children.find(child => child instanceof THREE.SpotLight);
+  if (flashlight) {
+    flashlight.visible = isFlashlightOn;
+  }
+  const flashlightEffect = document.getElementById('flashlightEffect');
+  flashlightEffect.style.display = isFlashlightOn ? 'block' : 'none';
+  if (isFlashlightOn) {
+    updateFlashlightPosition(lastMouseX, lastMouseY);
+  }
+}
+
+function updateFlashlightPosition(x, y) {
+  const flashlightEffect = document.getElementById('flashlightEffect');
+  flashlightEffect.style.background = `radial-gradient(circle at ${x}px ${y}px, transparent 0%, rgba(0,0,0,0.95) 10%, rgba(0,0,0,0.98) 20%)`;
+}
+
+function onKeyDown(event) {
+  switch(event.code) {
+    case 'KeyW':
+      moveForward = true;
+      break;
+    case 'KeyS':
+      moveBackward = true;
+      break;
+    case 'KeyA':
+      moveLeft = true;  
+      break;
+    case 'KeyD':
+      moveRight = true;  
+      break;
+    case 'ShiftLeft':
+      isRunning = true;
+      break;
+    case 'KeyE':
+      toggleFlashlight();
+      break;
+  }
+}
+
+function onKeyUp(event) {
+  switch(event.code) {
+    case 'KeyW':
+      moveForward = false;
+      break;
+    case 'KeyS':
+      moveBackward = false;
+      break;
+    case 'KeyA':
+      moveLeft = false;  
+      break;
+    case 'KeyD':
+      moveRight = false;  
+      break;
+    case 'ShiftLeft':
+      isRunning = false;
+      break;
+  }
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function updateSanity() {
+  if (isSanityDecreasing) {
+    sanity -= sanityDecreaseRate;
+    if (sanity <= 0) {
+      sanity = 0;
+      gameOver();
+    }
+    document.getElementById('sanity').textContent = Math.round(sanity);
+    
+    heartbeatSound.volume((100 - sanity) / 100);
+  }
+}
+
+function gameOver() {
+  showJumpscare();
+  setTimeout(() => {
+    document.getElementById('gameOver').style.display = 'block';
+    ambientSound.stop();
+    heartbeatSound.stop();
+  }, 1000);
+}
+
+function showJumpscare() {
+  const jumpscareOverlay = document.getElementById('jumpscareOverlay');
+  jumpscareOverlay.style.display = 'block';
+  jumpscareOverlay.classList.add('flashing');
+  jumpscareSound.play();
+  
+  setTimeout(() => {
+    jumpscareOverlay.style.display = 'none';
+    jumpscareOverlay.classList.remove('flashing');
+  }, 5000);
+}
+
+function useInhaler() {
+  if (inhalerUses > 0) {
+    inhalerSound.play();
+    inhalerUses--;
+    document.getElementById('inhalerUses').textContent = inhalerUses;
+    isSanityDecreasing = false;
+    sanity = Math.min(sanity + 20, 100);
+    document.getElementById('sanity').textContent = Math.round(sanity);
+    
+    document.getElementById('inhaler').style.backgroundColor = '#808080';
+    setTimeout(() => {
+      isSanityDecreasing = true;
+      document.getElementById('inhaler').style.backgroundColor = '#4CAF50';
+    }, 10000);
+  }
+}
+
+function updateMovement(delta) {
+  velocity.x -= velocity.x * 10.0 * delta;
+  velocity.z -= velocity.z * 10.0 * delta;
+
+  direction.z = Number(moveForward) - Number(moveBackward);
+  direction.x = Number(moveRight) - Number(moveLeft);
+  direction.normalize();
+
+  let speed = 1.0;
+  let isMoving = moveForward || moveBackward || moveLeft || moveRight;
+
+  if (isRunning && stamina > 0 && isMoving) {
+    speed = 1.15;
+    stamina -= delta * 5;
+    bobAnimation.speed = 15;
+    fov = 80;
+  } else {
+    speed = 1.0;
+    bobAnimation.speed = 10;
+    fov = 75;
+    if (!isRunning && stamina < 100) {
+      stamina += delta * 1.25;
+    }
+  }
+
+  stamina = Math.max(0, Math.min(100, stamina));
+  document.getElementById('staminaFill').style.width = `${stamina}%`;
+
+  if (isMoving) {
+    velocity.z -= direction.z * speed * delta;
+    velocity.x -= direction.x * speed * delta;
+    
+    bobAnimation.y = Math.sin(Date.now() * 0.01 * bobAnimation.speed) * bobAnimation.intensity;
+    pitchObject.position.y = bobAnimation.y;
+  } else {
+    pitchObject.position.y = 0;
+  }
+
+  const rotationMatrix = new THREE.Matrix4().makeRotationY(yawObject.rotation.y);
+  const movementVector = new THREE.Vector3(velocity.x, 0, velocity.z);
+  movementVector.applyMatrix4(rotationMatrix);
+
+  const newPosition = yawObject.position.clone();
+  newPosition.add(movementVector);
+
+  const collision = checkCollision(newPosition);
+  if (!collision) {
+    yawObject.position.copy(newPosition);
+  } else {
+    velocity.set(0, 0, 0);
+  }
+
+  camera.fov = fov;
+  camera.updateProjectionMatrix();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const delta = 0.016;
+  updateSanity();
+  updateMovement(delta);
+  checkKeyCollection(); 
+  checkChestOpen(); 
+
+  animateHands(delta); 
+
+  const flashlight = camera.children.find(child => child instanceof THREE.SpotLight);
+  if (flashlight) {
+    flashlight.target.position.set(0, 0, -1);
+    flashlight.target.updateMatrixWorld();
+  }
+
+  renderer.render(scene, camera);
+}
+
+document.getElementById('restartButton').addEventListener('click', () => {
+  sanity = 100;
+  inhalerUses = 3;
+  stamina = 100;
+  yawObject.position.set(-3, 2, -5);
+  pitchObject.rotation.set(0, 0, 0);
+  yawObject.rotation.set(0, 0, 0);
+  document.getElementById('gameOver').style.display = 'none';
+  document.getElementById('gameComplete').style.display = 'none';
+  document.getElementById('sanity').textContent = '100';
+  document.getElementById('inhalerUses').textContent = '3';
+  document.getElementById('inhaler').style.backgroundColor = '#4CAF50';
+  document.getElementById('staminaFill').style.width = '100%';
+  hasKey = false;
+  missionCompleted = false;
+  document.getElementById('keyStatus').textContent = 'Chave: Não encontrada';
+  scene.remove(keyObject);
+  scene.remove(chestObject);
+  scene.remove(inhalerObject);
+  createKeyAndChest();
+  isSanityDecreasing = true;
+  ambientSound.play();
+  heartbeatSound.play();
+});
+
+document.getElementById('gameContainer').addEventListener('click', function() {
+  document.body.requestPointerLock = document.body.requestPointerLock ||
+                                     document.body.mozRequestPointerLock ||
+                                     document.body.webkitRequestPointerLock;
+  document.body.requestPointerLock();
+});
+
+// Show the main menu initially
+showMainMenu();
+</script>
+</body></html>
